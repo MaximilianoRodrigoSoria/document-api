@@ -101,7 +101,7 @@ Cuando no hay más páginas, `nextPageToken` es `null`.
 
 Descarga el contenido de un archivo. La clave GCS se pasa como query param `gcsKey`. Retorna los bytes con `Content-Disposition: attachment`.
 
-> **Nota de implementación:** Spring Boot 3.x (`PathPatternParser`) no admite `**` en posición media de un patrón (p. ej., `/files/**/content` falla al arrancar). Por eso la clave va en el query param.
+> **Nota de implementación:** Spring Boot 3 (`PathPatternParser`) no admite `**` en posición media de un patrón (p. ej., `/files/**/content` falla al arrancar). Por eso la clave va en el query param.
 
 **Request:**
 
