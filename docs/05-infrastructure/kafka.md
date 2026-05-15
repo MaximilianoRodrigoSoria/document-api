@@ -30,7 +30,7 @@ Publicado por el servicio productor al topic `document.generation.requested`. El
 
 | Campo | Tipo | Requerido | Descripción |
 |-------|------|-----------|-------------|
-| `idempotencyId` | `String` | Sí | UUID único por solicitud. Se persiste como `idempotency_id` en `batch.raw_data`. Constraint `UNIQUE`. |
+| `idempotencyId` | `String` | Sí | UUID único por solicitud. Se persiste como `idempotency_id` en `data.raw_data`. Constraint `UNIQUE`. |
 | `domain` | `String` | Sí | Dominio de negocio que origina la solicitud (ej. `loans`, `misiones`). Se mapea a la columna `type`. |
 | `templateName` | `String` | Sí | Nombre del template a renderizar. Se persiste en `template_name` para indexación y cache. |
 | `fields` | `Map<String, String>` | No | Variables dinámicas a inyectar en el template. Se persiste serializado en la columna `data` (JSONB). |
@@ -49,14 +49,14 @@ Publicado por el servicio productor al topic `document.generation.requested`. El
 
 ## Evento de salida — `DocumentGenerationCompletedEvent`
 
-Publicado por el `DocumentPublicationWriter` en el Step 2 del Job, al topic `document.generation.completed`. Se publica dentro de la misma transacción Spring Batch que actualiza `status = PUBLISHED`.
+Publicado por `DocumentGenerationScheduler` tras `markPublished()`, al topic `document.generation.completed`.
 
 ```json
 {
   "idempotencyId": "550e8400-e29b-41d4-a716-446655440000",
   "domain":        "loans",
   "templateName":  "contract-v1",
-  "documentUrl":   "gs://batch-document-generator/documents/loans/550e8400-e29b-41d4-a716-446655440000.pdf",
+  "documentUrl":   "gs://document-generator-bucket/loans/550e8400-e29b-41d4-a716-446655440000.pdf",
   "status":        "GENERATED",
   "processedAt":   "2026-05-06T12:30:00Z"
 }
@@ -73,7 +73,7 @@ Publicado por el `DocumentPublicationWriter` en el Step 2 del Job, al topic `doc
 
 **Clave de partición**: `idempotencyId`
 
-**Nota:** si el `UPDATE` post-publish falla, Spring Batch hace rollback del chunk y reintenta. El consumidor del evento debe manejar duplicados usando `idempotencyId`.
+**Nota:** si `markPublished()` falla tras el publish, el registro queda en `GENERATED` y el scheduler lo publica nuevamente en el proximo ciclo. El consumidor del evento debe manejar duplicados usando `idempotencyId`.
 
 ---
 
@@ -81,7 +81,7 @@ Publicado por el `DocumentPublicationWriter` en el Step 2 del Job, al topic `doc
 
 | Propiedad | Valor |
 |-----------|-------|
-| `document-generation.kafka.consumer-group-id` | `batch-document-generator` |
+| `document-generation.kafka.consumer-group-id` | `document-generator-api` |
 | `auto-offset-reset` | `earliest` |
 | `enable-auto-commit` | `false` |
 | Modo de commit | `MANUAL_IMMEDIATE` (commit explícito tras persistencia exitosa) |

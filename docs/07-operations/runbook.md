@@ -184,12 +184,3 @@ WHERE status = 'GENERATED' ORDER BY processed_at ASC LIMIT 10;
 **Acción correctiva:**
 Los registros `GENERATED` son recogidos por el scheduler en el próximo ciclo (el claim de `PENDING`/`ERROR` es el único paso de selección; `GENERATED` se publica en el mismo ciclo en que fueron generados). Si persisten, verificar conectividad con Kafka.
 
----
-
-## Contactos y escalamiento
-
-| Nivel | Responsable | Canal |
-|-------|-------------|-------|
-| L1 — Operaciones | Equipo de ops | #ops-alerts |
-| L2 — Desarrollo | Equipo backend | #dev-document-generator |
-| L3 — Infraestructura GCP | Equipo infra | #infra-gcp |

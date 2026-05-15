@@ -31,7 +31,7 @@ Todas las excepciones son mapeadas por `GlobalControllerAdvice` a respuestas HTT
 | HTTP | Excepcion | Causa |
 |------|-----------|-------|
 | 500 | `DocumentGenerationException` | Fallo al generar el PDF o al subirlo a GCS. Visible en logs con contexto MDC. |
-| 404 | `TemplateNotFoundException` | El `templateName` del evento no existe en `batch.document_templates` con `status = ACTIVE` |
+| 404 | `TemplateNotFoundException` | El `templateName` del evento no existe en `data.document_templates` con `status = ACTIVE` |
 | 409 | `IdempotencyConflictException` | Intento de insertar un `idempotency_id` que ya existe y no es `FAILED` |
 
 ---
@@ -40,15 +40,7 @@ Todas las excepciones son mapeadas por `GlobalControllerAdvice` a respuestas HTT
 
 | HTTP | Excepcion | Causa |
 |------|-----------|-------|
-| 500 | `TemplateDownloadException` | Fallo al descargar el template desde GCS durante el procesamiento batch |
-
----
-
-## Errores de Jobs API
-
-| HTTP | Causa |
-|------|-------|
-| 500 | El `JobLauncher` fallo al lanzar el Job (ej. ya hay una ejecucion activa, error de configuracion) |
+| 500 | `TemplateDownloadException` | Fallo al acceder al template durante el procesamiento del scheduler |
 
 ---
 

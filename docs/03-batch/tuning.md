@@ -54,7 +54,7 @@ El `TemplateCache` singleton elimina operaciones repetidas cuando múltiples reg
 |-----------|-----------|-----------|
 | Query BD `findByNameAndStatus()` | × N registros | × T templates únicos |
 | Descarga GCS (bytes PDF) | × N registros | × T templates únicos |
-| `PdfFormDocumentGenerator.generate()` | × N registros | × N registros (inevitable) |
+| `HtmlPdfDocumentGenerator.generate()` | × N registros | × N registros (inevitable) |
 | GCS upload documento | × N registros | × N registros (inevitable) |
 
 Con N = 100 registros y T = 2 templates: las primeras dos filas pasan de 100 operaciones a 2.
@@ -72,7 +72,7 @@ El `TemplateCache` es máximamente eficiente. Aumentar `batch-size` para procesa
 El beneficio del caché es proporcional a la repetición. Si cada registro usa un template diferente, no hay ganancia de caché; el cuello de botella es GCS.
 
 ### PDFs grandes (muchos campos, páginas)
-Reducir `batch-size` para evitar picos de memoria. PDFBox carga el documento completo en memoria durante la generación.
+Reducir `batch-size` para evitar picos de memoria. Flying Saucer carga el documento HTML completo en memoria durante la conversión a PDF.
 
 ### Multi-réplica
 `FOR UPDATE SKIP LOCKED` garantiza que dos réplicas nunca tomen el mismo registro. Cada réplica tiene su propio `TemplateCache` singleton. La suma de `batch-size × réplicas` determina la capacidad total por ciclo.

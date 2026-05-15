@@ -95,7 +95,7 @@ Verifican que el contexto de Spring arranca correctamente con la configuracion m
 ```java
 @SpringBootTest
 @AutoConfigureTestDatabase(replace = Replace.ANY)
-class BatchDocumentGeneratorApplicationTest {
+class ApplicationTest {
     @Test
     void contextLoads() { }
 }
@@ -172,16 +172,13 @@ Para correr todos:
 
 JaCoCo genera reportes en `build/reports/jacoco/test/`:
 - HTML: `index.html`
-- XML: `jacocoTestReport.xml` (para SonarQube / CI)
+- XML: `jacocoTestReport.xml` (para CI)
 
 El umbral minimo configurado es **80%** de cobertura global.
 
 ```bash
 # Generar reporte
 ./gradlew test jacocoTestReport
-
-# Verificar umbral
-./gradlew jacocoTestCoverageVerification
 ```
 
 ---

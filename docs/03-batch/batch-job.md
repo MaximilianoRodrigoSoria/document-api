@@ -156,7 +156,7 @@ document-generation:
     recovery-timeout-minutes: 30
 
   kafka:
-    consumer-group-id: batch-document-generator
+    consumer-group-id: document-generator-api
     topics:
       requested: document.generation.requested
       completed: document.generation.completed

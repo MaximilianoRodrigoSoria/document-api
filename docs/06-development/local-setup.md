@@ -4,7 +4,7 @@
 
 | Herramienta | Versión mínima | Notas |
 |-------------|---------------|-------|
-| Java | 17 | Se recomienda 17 LTS |
+| Java | 21 | Se recomienda 21 LTS |
 | Docker | 24+ | — |
 | Docker Compose | 2.x | — |
 | Gradle | 8.7 | Incluido en el wrapper; no requiere instalación manual |

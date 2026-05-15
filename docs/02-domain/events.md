@@ -38,7 +38,7 @@ Publicado por el servicio productor. El consumer verifica idempotencia y persist
 |-------|------|-----------|-------------|
 | `idempotencyId` | `String` (UUID) | Si | Clave unica por solicitud. Constraint UNIQUE en DB. Previene duplicados. |
 | `domain` | `String` | Si | Dominio de negocio (ej. `misiones`, `loans`). Se persiste en la columna `type`. |
-| `templateName` | `String` | Si | Nombre del template a renderizar. Debe existir en `batch.document_templates` con status `ACTIVE`. |
+| `templateName` | `String` | Si | Nombre del template a renderizar. Debe existir en `data.document_templates` con status `ACTIVE`. |
 | `fields` | `Map<String, Object>` | No | Variables dinamicas del template. Se persiste serializado como JSONB en la columna `data`. |
 
 ### Comportamiento ante duplicados
@@ -53,7 +53,7 @@ Publicado por el servicio productor. El consumer verifica idempotencia y persist
 
 ## Evento de salida — DocumentGenerationCompletedEvent
 
-Publicado por `DocumentPublicationWriter` en Step 2, dentro de la misma transaccion que actualiza `status = PUBLISHED`.
+Publicado por `DocumentGenerationScheduler` tras `markPublished()`, que actualiza `status = PUBLISHED`.
 
 **Topic:** `document.generation.completed`
 **Clave de particion:** `idempotencyId`
@@ -63,7 +63,7 @@ Publicado por `DocumentPublicationWriter` en Step 2, dentro de la misma transacc
   "idempotencyId": "550e8400-e29b-41d4-a716-446655440000",
   "domain":        "misiones",
   "templateName":  "mission-template-v1",
-  "documentUrl":   "gs://batch-document-generator/misiones/550e8400-e29b-41d4-a716-446655440000.pdf",
+  "documentUrl":   "gs://document-generator-bucket/misiones/550e8400-e29b-41d4-a716-446655440000.pdf",
   "status":        "GENERATED",
   "processedAt":   "2026-05-06T12:30:00"
 }
@@ -82,8 +82,8 @@ Publicado por `DocumentPublicationWriter` en Step 2, dentro de la misma transacc
 
 ### Garantias de entrega
 
-- El evento se publica dentro de la transaccion Spring Batch que hace `UPDATE status = PUBLISHED`.
-- Si el UPDATE falla despues del publish, Spring Batch hace rollback del chunk y reintenta.
+- El evento se publica antes de que el scheduler invoque `markPublished()`.
+- Si el `markPublished()` falla despues del publish, el registro queda en `GENERATED` y el scheduler lo publica nuevamente en el proximo ciclo.
 - **Los consumidores deben ser idempotentes** usando `idempotencyId` como clave de deduplicacion.
 
 ---
@@ -92,7 +92,7 @@ Publicado por `DocumentPublicationWriter` en Step 2, dentro de la misma transacc
 
 | Propiedad | Valor |
 |-----------|-------|
-| `consumer-group-id` | `batch-document-generator` |
+| `consumer-group-id` | `document-generator-api` |
 | `auto-offset-reset` | `earliest` |
 | `enable-auto-commit` | `false` |
 | Modo de commit | `MANUAL_IMMEDIATE` (commit explicitamente tras persistencia exitosa) |

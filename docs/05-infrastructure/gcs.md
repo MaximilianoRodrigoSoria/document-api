@@ -4,7 +4,7 @@
 
 | Propiedad | Valor |
 |-----------|-------|
-| Nombre | `batch-document-generator-bucket` (configurable via `gcs.bucket-name`) |
+| Nombre | `document-generator-bucket` (configurable via `gcs.bucket-name`) |
 | Acceso | Privado. Sin acceso público. |
 | Región | Según el proyecto GCP del ambiente |
 | Emulador local | `fake-gcs-server` en `http://localhost:4443` |
@@ -41,9 +41,9 @@ String gcsKey = folder + "/" + idempotencyId + ".pdf";
 
 ## Autenticación
 
-### Producción (GKE con Workload Identity)
+### Producción (Service Account / Workload Identity)
 
-El pod tiene un Service Account de Kubernetes (KSA) mapeado a un Google Service Account (GSA) con los permisos necesarios. No se requieren credenciales explícitas en el código.
+El pod tiene un Google Service Account (GSA) con los permisos necesarios, configurado via Workload Identity (GKE) o credenciales explícitas. No se requieren credenciales hardcodeadas en el código.
 
 Permisos mínimos del GSA:
 
@@ -63,7 +63,7 @@ El `GcsConfig` detecta la presencia de `gcs.emulator-host` y configura el client
 gcs:
   emulator-host: http://localhost:4443
   project-id:    local-project
-  bucket-name:   batch-document-generator-bucket
+  bucket-name:   document-generator-bucket
 ```
 
 No se requieren credenciales reales. El emulador acepta cualquier token.
