@@ -1,9 +1,48 @@
 spring:
   application:
-    name: template
+    name: document-api-test
   main:
     banner-mode: 'off'
-  profiles:
-    active: test
   jackson:
     property-naming-strategy: SNAKE_CASE
+
+  # ─── Kafka — valores por defecto para tests; @EmbeddedKafka los sobreescribe ─
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      auto-offset-reset: earliest
+      group-id: test-group
+
+  # ─── Flyway — deshabilitado por defecto; BaseIntegrationTest lo reactiva
+  #             via @DynamicPropertySource apuntando al contenedor PostgreSQL ──
+  flyway:
+    enabled: false
+
+  # ─── JPA — sin DDL automático; Flyway (en integration tests) maneja el schema
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+
+# ─── Scheduler — ciclo muy largo para que no dispare durante los tests ────────
+document-generation:
+  schedule:
+    fixed-delay: 9999999
+    batch-size: 1
+    recovery-timeout-minutes: 60
+
+# ─── Firma — Noop activo en tests (no se necesita keystore real) ──────────────
+signing:
+  enabled: false
+
+# ─── GCS — valores ficticios; los integration tests los sobreescriben ─────────
+gcs:
+  emulator-host: http://localhost:4443
+  public-url-base: http://localhost:4443
+  project-id: test-project
+  bucket-name: test-bucket
+
+logging:
+  level:
+    ar.com.laboratory: WARN
+    org.flywaydb: WARN

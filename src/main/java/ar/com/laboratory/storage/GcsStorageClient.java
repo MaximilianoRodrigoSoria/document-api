@@ -31,25 +31,48 @@ public class GcsStorageClient {
     @Value("${gcs.public-url-base:https://storage.googleapis.com}")
     private String publicUrlBase;
 
-    public String uploadDocument(String idempotencyId, String domain, byte[] pdfBytes) {
+    /**
+     * Sube un documento generado a GCS y retorna su URL pública.
+     * El nombre del objeto en GCS se construye como {@code <domain>/<idempotencyId>.<extension>}.
+     *
+     * @param idempotencyId ID único del registro (se usa como nombre del objeto)
+     * @param domain        dominio del documento (determina la carpeta en el bucket)
+     * @param docBytes      bytes del documento a subir
+     * @param contentType   MIME type del documento (ej. {@code application/pdf})
+     * @param extension     extensión del archivo sin punto (ej. {@code pdf}, {@code docx})
+     * @return URL pública del objeto creado en GCS
+     */
+    public String uploadDocument(String idempotencyId, String domain,
+                                 byte[] docBytes, String contentType, String extension) {
         Objects.requireNonNull(idempotencyId, "idempotencyId must not be null");
-        Objects.requireNonNull(pdfBytes, "pdfBytes must not be null");
+        Objects.requireNonNull(docBytes,      "docBytes must not be null");
 
         String folder = (domain != null && !domain.isBlank())
                 ? domain.toLowerCase().trim()
                 : "documents";
-        String gcsKey = folder + "/" + idempotencyId + ".pdf";
+        String gcsKey = folder + "/" + idempotencyId + "." + extension;
 
         try {
-            BlobId blobId = BlobId.of(bucket, gcsKey);
-            BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType("application/pdf").build();
-            gcsStorage.create(blobInfo, pdfBytes);
+            BlobId   blobId   = BlobId.of(bucket, gcsKey);
+            BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType(contentType).build();
+            gcsStorage.create(blobInfo, docBytes);
             String documentUri = buildPublicUrl(gcsKey);
-            log.debug("PDF uploaded to GCS: key={}, size={} bytes", gcsKey, pdfBytes.length);
+            log.debug("Document uploaded to GCS: key={}, contentType={}, size={} bytes",
+                    gcsKey, contentType, docBytes.length);
             return documentUri;
         } catch (Exception e) {
-            throw new DocumentGenerationException("Failed to upload PDF to GCS key '" + gcsKey + "'", e);
+            throw new DocumentGenerationException(
+                    "Failed to upload document to GCS key '" + gcsKey + "'", e);
         }
+    }
+
+    /**
+     * Atajo para subir un PDF. Equivale a llamar
+     * {@link #uploadDocument(String, String, byte[], String, String)} con
+     * {@code contentType="application/pdf"} y {@code extension="pdf"}.
+     */
+    public String uploadDocument(String idempotencyId, String domain, byte[] pdfBytes) {
+        return uploadDocument(idempotencyId, domain, pdfBytes, "application/pdf", "pdf");
     }
 
     public byte[] downloadTemplate(String gcsKey) {

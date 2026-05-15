@@ -33,12 +33,22 @@ gcs:
   project-id: local-project
   bucket-name: document-generator-bucket
 
-# ─── Scheduler — config rápida para desarrollo local ─────────────────────────
+# ─── Scheduler — config rapida para desarrollo local ─────────────────────────
 document-generation:
   schedule:
     fixed-delay: 30000
     batch-size: 20
     recovery-timeout-minutes: 5
+# --- Firma criptografica PDF (PAdES/PKCS#7) ----------------------------------
+# En produccion sobreescribir via env vars: SIGNING_KS_PATH y SIGNING_KS_PASS
+signing:
+  enabled: true
+  keystore-path: ${SIGNING_KS_PATH:config/signing-keystore.p12}
+  keystore-password: ${SIGNING_KS_PASS:changeit}
+  alias: document-signer
+  signer-name: Max Lab Document Signer
+  reason: Documento generado automaticamente
+  location: ""
 
 logging:
   level:

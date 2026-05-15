@@ -2,6 +2,7 @@ package ar.com.laboratory.model.entity;
 
 import ar.com.laboratory.model.enums.DocumentDomain;
 import ar.com.laboratory.model.enums.DocumentTemplateStatus;
+import ar.com.laboratory.model.enums.OutputType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -46,8 +47,22 @@ public class DocumentTemplate {
     @Column(name = "gcs_key", nullable = true, length = 1000)
     private String gcsKey;
 
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    /**
+     * Contenido HTML Mustache del template.
+     * Sólo relevante cuando {@link #outputType} es {@link OutputType#PDF}.
+     * Para templates DOCX este campo es {@code null} — el binario .docx se
+     * referencia mediante {@link #gcsKey}.
+     */
+    @Column(name = "content", nullable = true, columnDefinition = "TEXT")
     private String content;
+
+    /**
+     * Tipo de documento de salida. Determina qué generador procesa este template.
+     * Valor por defecto: {@link OutputType#PDF} (backward-compat con templates existentes).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "output_type", nullable = false, length = 20)
+    private OutputType outputType = OutputType.PDF;
 
     @Column(name = "version", nullable = false, length = 50)
     private String version;

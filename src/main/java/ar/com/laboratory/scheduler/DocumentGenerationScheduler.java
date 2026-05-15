@@ -4,11 +4,15 @@ import ar.com.laboratory.cache.TemplateCache;
 import ar.com.laboratory.config.DocumentGenerationProperties;
 import ar.com.laboratory.constants.LogConstants;
 import ar.com.laboratory.exception.DocumentGenerationException;
+import ar.com.laboratory.generator.DocxDocumentGenerator;
 import ar.com.laboratory.generator.HtmlPdfDocumentGenerator;
+import ar.com.laboratory.model.entity.DocumentTemplate;
 import ar.com.laboratory.model.entity.RawData;
+import ar.com.laboratory.model.enums.OutputType;
 import ar.com.laboratory.model.event.DocumentGenerationCompletedEvent;
 import ar.com.laboratory.publisher.DocumentGenerationCompletedPublisher;
 import ar.com.laboratory.service.DocumentGenerationService;
+import ar.com.laboratory.signer.DocumentSigner;
 import ar.com.laboratory.storage.GcsStorageClient;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +37,8 @@ public class DocumentGenerationScheduler {
     private final DocumentGenerationService            service;
     private final TemplateCache                        templateCache;
     private final HtmlPdfDocumentGenerator             htmlPdfDocumentGenerator;
+    private final DocxDocumentGenerator                docxDocumentGenerator;
+    private final DocumentSigner                       documentSigner;
     private final GcsStorageClient                     gcsStorageClient;
     private final DocumentGenerationCompletedPublisher publisher;
     private final DocumentGenerationProperties         properties;
@@ -76,16 +82,35 @@ public class DocumentGenerationScheduler {
         MDC.put(LogConstants.MDC_TEMPLATE_NAME,  record.getTemplateName());
 
         try {
-            var compiledTemplate = templateCache.getCompiledTemplate(record.getTemplateName());
+            DocumentTemplate template = templateCache.getEntity(record.getTemplateName());
             Map<String, Object> fields = deserializeData(record.getData());
-            byte[] pdfBytes = htmlPdfDocumentGenerator.generate(compiledTemplate, fields);
+
+            byte[]  docBytes;
+            String  contentType;
+            String  extension;
+
+            if (template.getOutputType() == OutputType.DOCX) {
+                byte[] templateBytes = templateCache.getDocxTemplateBytes(record.getTemplateName());
+                docBytes    = docxDocumentGenerator.generate(templateBytes, fields);
+                contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                extension   = "docx";
+            } else {
+                var compiledTemplate = templateCache.getCompiledTemplate(record.getTemplateName());
+                docBytes    = htmlPdfDocumentGenerator.generate(compiledTemplate, fields);
+                contentType = "application/pdf";
+                extension   = "pdf";
+            }
+
+            if ("pdf".equals(extension)) {
+                docBytes = documentSigner.sign(docBytes, record.getIdempotencyId());
+            }
 
             String documentUrl = gcsStorageClient.uploadDocument(
-                    record.getIdempotencyId(), record.getType(), pdfBytes);
+                    record.getIdempotencyId(), record.getType(), docBytes, contentType, extension);
 
-            log.debug("[{}] PDF generated and uploaded: processId={}, size={} bytes, url={}",
+            log.debug("[{}] Document generated and uploaded: processId={}, outputType={}, size={} bytes, url={}",
                     LogConstants.LOG_SCHEDULER_GCS_UPLOADED,
-                    record.getProcessId(), pdfBytes.length, documentUrl);
+                    record.getProcessId(), template.getOutputType(), docBytes.length, documentUrl);
 
             service.markGenerated(record, documentUrl);
 

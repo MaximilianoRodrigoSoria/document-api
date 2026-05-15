@@ -14,6 +14,11 @@ public class DocumentGenerationException extends RuntimeException {
         this.processId = processId;
     }
 
+    public DocumentGenerationException(String message) {
+        super(message);
+        this.processId = null;
+    }
+
     public DocumentGenerationException(String message, Throwable cause) {
         super(message, cause);
         this.processId = null;
