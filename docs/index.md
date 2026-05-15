@@ -10,9 +10,9 @@ hide:
 # 📄 document-generator-api
 
 Microservicio de generación asíncrona de documentos PDF.  
-Recibe solicitudes vía Kafka · persiste en PostgreSQL · llena plantillas con JasperReports · sube a GCS · publica el resultado de vuelta a Kafka.
+Recibe solicitudes vía Kafka · persiste en PostgreSQL · llena plantillas HTML Mustache · sube a GCS · publica el resultado de vuelta a Kafka.
 
-**Java 21 · Spring Boot 3.3 · Kafka · PostgreSQL 15 · GCS · JasperReports**
+**Java 21 · Spring Boot 3.3.3 · Kafka · PostgreSQL 15 · GCS · Flying Saucer**
 
 </div>
 
@@ -89,16 +89,6 @@ Setup local con Docker Compose, estructura de paquetes, estrategia de testing y 
 Runbook con los escenarios de fallo más frecuentes, gestión de templates en producción y trigger manual del scheduler.
 
 [Ver operaciones →](07-operations/runbook.md)
-
-</div>
-
-<div class="card" markdown>
-
-### 🎧 Onboarding
-
-Narración de bienvenida para nuevos integrantes del equipo. Usá el botón de audio (esquina inferior derecha) para escucharla.
-
-[Ver onboarding →](context/onboarding.md)
 
 </div>
 

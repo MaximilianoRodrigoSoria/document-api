@@ -1,16 +1,15 @@
-# ADR-001 — Generacion Asincrona de Documentos para Misiones Segmentadas
+# ADR-001 — Generacion Asincrona de Documentos
 
 ## Informacion General
 
 | Campo | Valor |
 |-------|-------|
 | ID | ADR-001 |
-| Titulo | Generacion Asincrona de Documentos para Misiones Segmentadas |
+| Titulo | Generacion Asincrona de Documentos |
 | Estado | **Aceptado** |
 | Fecha | 2026-05-05 |
-| Dominio | Loyalty / Misiones |
-| Sistemas involucrados | payment-loyalty, batch-document-generator, Kafka (KRaft), PostgreSQL 15.2, Google Cloud Storage |
-| Autor | Maximiliano Soria |
+| Dominio | Generacion documental |
+| Sistemas involucrados | document-generator-api, Kafka (KRaft), PostgreSQL 15.2, Google Cloud Storage |
 
 > **Nota:** El almacenamiento fue migrado de AWS S3 a Google Cloud Storage. Ver [ADR-002](ADR-002-gcs-sobre-s3.md).
 
@@ -33,29 +32,25 @@
 13. [Plan de Implementacion](#plan-de-implementacion)
 14. [Criterios de Aceptacion](#criterios-de-aceptacion)
 15. [Decision Final](#decision-final)
-16. [Equipo](#equipo)
 
 ---
 
 ## Contexto
 
-El sistema `payment-loyalty` permite la creacion de misiones. Algunas misiones requieren generar documentos asociados basados en templates del dominio **MISIONES** (y potencialmente otros dominios en el futuro, como `loans`, `cards`).
+Un servicio productor externo requiere generar documentos asociados a sus entidades de negocio (el dominio inicial es **MISIONES**, con posibilidad de expandir a otros dominios como `loans`, `cards`).
 
-La generacion de documentos involucra procesamiento pesado: llenado de campos dinamicos desde templates PDF, exportacion y almacenamiento en GCS. Este proceso no debe ocurrir de forma sincronica dentro del flujo transaccional de creacion de una mision.
+La generacion de documentos involucra procesamiento costoso: renderizado de templates HTML Mustache a PDF con Flying Saucer, almacenamiento en GCS. Este proceso no debe ocurrir de forma sincronica dentro del flujo transaccional del servicio productor.
 
-Se propone desacoplar la generacion de documentos mediante Kafka y un componente batch especializado: **batch-document-generator**.
+Se propone desacoplar la generacion de documentos mediante Kafka y un servicio especializado: **document-generator-api**.
 
 ---
 
 ## Problema
 
-Cuando se crea una mision, el sistema necesita generar un documento sin bloquear el flujo principal de negocio.
+Cuando el servicio productor necesita generar un documento, el problema es evitar que asuma responsabilidades fuera de su dominio:
 
-El problema es evitar que `payment-loyalty` asuma responsabilidades fuera de su dominio:
-
-- Generacion fisica de documentos (PDFBox, JasperReports, etc.)
-- Manejo de templates y cache de archivos
-- Procesamiento por lotes de alto volumen
+- Generacion fisica de documentos (renderizado HTML, conversion PDF)
+- Manejo de templates y cache
 - Persistencia del estado de generacion
 - Almacenamiento de archivos en buckets
 - Reintentos, control de errores y trazabilidad del pipeline
@@ -64,45 +59,45 @@ El problema es evitar que `payment-loyalty` asuma responsabilidades fuera de su 
 
 ## Decision
 
-Se implementa una arquitectura asincrona basada en eventos, donde `payment-loyalty` publica una solicitud de generacion en Kafka y `batch-document-generator` se encarga de todo el pipeline posterior.
+Se implementa una arquitectura asincrona basada en eventos, donde el servicio productor externo publica una solicitud de generacion en Kafka y `document-generator-api` se encarga de todo el pipeline posterior.
 
 ---
 
 ## Flujo completo
 
 ```
-payment-loyalty
+Servicio productor externo
     |
     v Kafka [document.generation.requested]
     |
     v DocumentGenerationRequestedConsumer
     |   - Verifica idempotency_id (UNIQUE constraint)
-    |   - INSERT batch.raw_data (status = PENDING, retry_count = 0)
+    |   - INSERT data.raw_data (status = PENDING, retry_count = 0)
     |
-    v @Scheduled / REST endpoint -> DocumentGenerationJob
+    v @Scheduled(fixedDelay) → DocumentGenerationScheduler
     |
-    +-- RecoveryJobListener.beforeJob()
-    |   - Resetea registros PROCESSING colgados -> PENDING (timeout: 30 min)
+    +-- TX1: recoverStuckProcessing()
+    |   - Resetea registros PROCESSING colgados -> PENDING (timeout configurable)
     |
-    +-- Step 1: generationStep
-    |   - Reader:    SELECT WHERE status IN (PENDING, ERROR) AND retry_count < 3
-    |                ORDER BY template_name, created_at
-    |                FOR UPDATE SKIP LOCKED
-    |   - Cache:     TemplateCache @StepScope -- descarga template de GCS una vez por templateName
-    |   - Processor: Marca PROCESSING -> Genera PDF -> Sube a GCS -> Retorna item con document_url
-    |   - Writer:    UPDATE status = GENERATED (exito)
-    |                UPDATE status = ERROR, retry_count++ (fallo recuperable)
-    |                UPDATE status = FAILED (retry_count >= 3, permanente)
+    +-- TX2: claimPendingRecords(batchSize)
+    |   - SELECT WHERE status IN (PENDING, ERROR) AND retry_count < 3
+    |     FOR UPDATE SKIP LOCKED → UPDATE status = PROCESSING
     |
-    +-- Step 2: publicationStep
-        - Reader:  SELECT WHERE status = GENERATED LIMIT 100
-        - Writer:  Publica Kafka [document.generation.completed]
-                   UPDATE status = PUBLISHED, published_at
-                   (dentro de la misma transaccion Spring Batch)
+    +-- Por cada registro (secuencial dentro del ciclo):
+    |   - templateCache.getCompiledTemplate(templateName)
+    |   - deserializar data (JSONB) → Map<String, Object>
+    |   - HtmlPdfDocumentGenerator.generate(compiledTemplate, fields)
+    |       - Mustache.execute(fields) → HTML string
+    |       - Flying Saucer ITextRenderer → PDF bytes
+    |   - gcsStorageClient.uploadDocument(idempotencyId, domain, pdfBytes)
+    |   - TX3: markGenerated(record, documentUrl) → status = GENERATED
+    |   - publisher.publish(topic, event)           → Kafka
+    |   - TX4: markPublished(record)                → status = PUBLISHED
+    |   - si error: TX5: markError(record, message) → status = ERROR/FAILED
     |
     v Kafka [document.generation.completed]
     |
-    v payment-loyalty
+    v Servicio productor externo
         - Recibe idempotency_id + document_url
         - Actualiza su dominio con el link del documento generado
 ```
@@ -111,37 +106,37 @@ payment-loyalty
 
 ## Componentes
 
-### payment-loyalty
+### Servicio productor externo
 
 **Responsabilidades:**
-- Crear misiones y publicar la solicitud de generacion de documento.
-- Escuchar el evento de documento generado y actualizar la entidad con el `document_url`.
+- Publicar la solicitud de generacion de documento a Kafka.
+- Escuchar el evento de documento generado y actualizar su entidad con el `document_url`.
 
 **No debe:** generar documentos, gestionar templates, operar GCS ni ejecutar procesamiento batch.
 
-### batch-document-generator
+### document-generator-api
 
 **Responsabilidades:**
 - Consumir solicitudes de generacion desde Kafka.
 - Persistir solicitudes con estado inicial `PENDING`.
-- Procesar solicitudes por lote (Spring Batch, chunk size configurable).
-- Generar documentos PDF a partir de templates.
+- Procesar solicitudes en ciclos del scheduler (`@Scheduled fixedDelay`).
+- Generar documentos PDF a partir de templates HTML Mustache + Flying Saucer.
 - Guardar documentos en Google Cloud Storage.
-- Controlar el ciclo de vida completo (PENDING -> PUBLISHED).
+- Controlar el ciclo de vida completo (PENDING → PUBLISHED).
 - Publicar eventos de resultado.
-- Mantener el catalogo de templates (`batch.document_templates`).
+- Mantener el catalogo de templates (`data.document_templates`).
 
 ### Kafka (KRaft)
 
 **Topics:**
-- `document.generation.requested` -- entrada
-- `document.generation.completed` -- salida
+- `document.generation.requested` — entrada
+- `document.generation.completed` — salida
 
 ### PostgreSQL 15.2
 
-**Schema:** `batch`. **Base de datos:** `document_generator_db`.
+**Schema:** `data`. **Base de datos:** `document_generator_db`.
 
-Tablas principales: `batch.raw_data` y `batch.document_templates`. Las tablas de metadata de Spring Batch tambien viven en el schema `batch`.
+Tablas principales: `data.raw_data` y `data.document_templates`.
 
 ### Google Cloud Storage
 
@@ -179,7 +174,7 @@ Topic: `document.generation.completed` | Clave de particion: `idempotencyId`
   "idempotencyId": "550e8400-e29b-41d4-a716-446655440000",
   "domain":        "misiones",
   "templateName":  "mission-template-v1",
-  "documentUrl":   "gs://batch-document-generator/misiones/550e8400-e29b-41d4-a716-446655440000.pdf",
+  "documentUrl":   "gs://document-generator-bucket/misiones/550e8400-e29b-41d4-a716-446655440000.pdf",
   "status":        "GENERATED",
   "processedAt":   "2026-05-06T15:00:00"
 }
@@ -192,23 +187,23 @@ Topic: `document.generation.completed` | Clave de particion: `idempotencyId`
 ```
 PENDING
    |
-   v Step 1 (Processor)
+   v Scheduler (claimPendingRecords)
 PROCESSING ---- error ---> ERROR ---- retry_count >= 3 ---> FAILED
    |
-   v OK (Writer)
+   v OK
 GENERATED
    |
-   v Step 2 (Writer)
+   v Scheduler (publicacion Kafka)
 PUBLISHED
 ```
 
 | Estado | Descripcion |
 |--------|-------------|
 | `PENDING` | Solicitud recibida y persistida por el consumer Kafka |
-| `PROCESSING` | Step 1 en ejecucion (estado transitorio) |
+| `PROCESSING` | Scheduler procesando (estado transitorio) |
 | `GENERATED` | PDF generado y `document_url` disponible en GCS |
 | `PUBLISHED` | Evento publicado a Kafka. Ciclo de vida completo. |
-| `ERROR` | Fallo en el Processor. Se reintentara si `retry_count < 3`. |
+| `ERROR` | Fallo en el scheduler. Se reintentara si `retry_count < 3`. |
 | `FAILED` | Supero 3 intentos. Requiere intervencion manual. |
 
 ---
@@ -217,23 +212,27 @@ PUBLISHED
 
 ### Idempotencia en doble sentido
 
-El `idempotency_id` tiene constraint `UNIQUE` en `batch.raw_data`. Si el ID ya existe y no es `FAILED` -> ACK sin persistir. Si es `FAILED` -> re-insert como `PENDING`. El consumidor de `document.generation.completed` debe manejar duplicados por `idempotencyId`.
+El `idempotency_id` tiene constraint `UNIQUE` en `data.raw_data`. Si el ID ya existe y no es `FAILED` → ACK sin persistir. Si es `FAILED` → re-insert como `PENDING`. El consumidor de `document.generation.completed` debe manejar duplicados por `idempotencyId`.
 
 ### Concurrencia con FOR UPDATE SKIP LOCKED
 
-Permite ejecutar multiples replicas del servicio (Kubernetes HPA) sin que dos workers procesen el mismo registro. Cada replica bloquea su lote y los demas lo saltan.
+Permite ejecutar multiples replicas del servicio sin que dos instancias procesen el mismo registro. Cada replica bloquea su lote y las demas lo saltan.
 
-### TemplateCache @StepScope
+### TemplateCache singleton
 
-Mantiene un `Map<String, byte[]>` durante el Step 1. El Reader ordena por `template_name`, maximizando el hit rate. Con 10k registros de 3 templates -> 3 descargas GCS en lugar de 10k.
+Mantiene dos `ConcurrentHashMap` entre ciclos del scheduler: `entityCache` (metadata BD) y `compiledCache` (template Mustache compilado). El primer acceso por `templateName` consulta BD y compila el Mustache; los accesos posteriores son hits de memoria O(1). Con 10k registros de 3 templates → 3 queries en lugar de 10k.
 
 ### Recovery de estados colgados
 
-`RecoveryJobListener.beforeJob()` detecta registros con `status = PROCESSING` cuyo `updated_at` supera el timeout (default: 30 min) y los resetea a `PENDING`. Cubre crashes mid-chunk sin intervencion manual.
+`recoverStuckProcessing()` se llama al inicio de cada ciclo del scheduler. Detecta registros con `status = PROCESSING` cuyo `updated_at` supera el timeout configurado y los resetea a `PENDING`. Cubre crashes mid-processing sin intervencion manual.
 
 ### Retry con limite de 3 intentos
 
-El Writer incrementa `retry_count` en cada fallo. Cuando `retry_count >= 3`, el status pasa a `FAILED` permanente. Evita bucles infinitos ante errores estructurales.
+`markError()` incrementa `retry_count` en cada fallo. Cuando `retry_count >= 3`, el status pasa a `FAILED` permanente. Evita bucles infinitos ante errores estructurales.
+
+### fixedDelay en lugar de cron
+
+El countdown comienza cuando el ciclo termina, evitando solapamientos si el procesamiento de un lote dura mas que el intervalo configurado.
 
 ---
 
@@ -241,9 +240,9 @@ El Writer incrementa `retry_count` en cada fallo. Cuando `retry_count >= 3`, el 
 
 | Alternativa | Ventajas | Desventajas |
 |-------------|----------|-------------|
-| Generacion sincronica en `payment-loyalty` | Menos componentes | Acoplamiento alto, latencia, riesgo de timeout |
-| **Generacion asincrona Kafka + batch dedicado (SELECCIONADA)** | Desacople, escalabilidad, resiliencia | Mayor complejidad operativa |
-| Job interno dentro de `payment-loyalty` | Menos despliegues | Mezcla responsabilidades |
+| Generacion sincronica en el servicio productor | Menos componentes | Acoplamiento alto, latencia, riesgo de timeout |
+| **Generacion asincrona Kafka + servicio dedicado (SELECCIONADA)** | Desacople, escalabilidad, resiliencia | Mayor complejidad operativa |
+| Job interno dentro del servicio productor | Menos despliegues | Mezcla responsabilidades |
 
 ---
 
@@ -251,9 +250,9 @@ El Writer incrementa `retry_count` en cada fallo. Cuando `retry_count >= 3`, el 
 
 ### Positivas
 
-- Desacople de la creacion de misiones de la generacion documental.
-- No bloquea el flujo transaccional de `payment-loyalty`.
-- Escalabilidad mediante procesamiento batch con chunks y multi-threading.
+- Desacople de la logica del servicio productor de la generacion documental.
+- No bloquea el flujo transaccional del servicio productor.
+- Escalabilidad mediante scheduler con batch-size configurable y multiples replicas.
 - Reintentos, estados y errores controlados y trazables.
 - Reutilizable para multiples dominios.
 
@@ -272,10 +271,10 @@ El Writer incrementa `retry_count` en cada fallo. Cuando `retry_count >= 3`, el 
 |--------|---------|------------|
 | Evento duplicado en Kafka | Doble procesamiento | `idempotency_id` UNIQUE en DB |
 | Fallo al guardar en GCS | PDF no disponible | `retry_count`, estado ERROR/FAILED, alertas |
-| Fallo al publicar evento completado | `payment-loyalty` no actualiza el link | Estado GENERATED separado de PUBLISHED; Step 2 reintenta en proxima ejecucion |
-| Template inexistente o corrupto en GCS | Error de generacion | Validacion previa con catalogo; error capturado en Processor |
-| Alto volumen de documentos | Saturacion del batch | Chunk size configurable, thread pool hasta 32 cores, escalado horizontal con SKIP LOCKED |
-| Crash mid-chunk | Registros colgados en PROCESSING | `RecoveryJobListener` los detecta y resetea a PENDING |
+| Fallo al publicar evento completado | Servicio productor no recibe la URL | Estado GENERATED separado de PUBLISHED; scheduler reintenta en proximo ciclo |
+| Template inexistente o corrupto | Error de generacion | Validacion previa con catalogo; error capturado en el scheduler |
+| Alto volumen de documentos | Saturacion del scheduler | `batch-size` configurable, multiples replicas con SKIP LOCKED |
+| Crash mid-processing | Registros colgados en PROCESSING | `recoverStuckProcessing()` los detecta y resetea a PENDING |
 
 ---
 
@@ -291,21 +290,17 @@ El Writer incrementa `retry_count` en cada fallo. Cuando `retry_count >= 3`, el 
 
 ## Criterios de Aceptacion
 
-- Al crear una mision, `payment-loyalty` publica correctamente la solicitud de generacion.
+- El servicio productor publica correctamente la solicitud de generacion al topic Kafka.
 - El consumer persiste la solicitud como `PENDING` con idempotencia correcta.
-- El Step 1 genera el PDF, lo sube a GCS y actualiza el estado a `GENERATED`.
-- El Step 2 publica el evento y actualiza el estado a `PUBLISHED`.
+- El scheduler genera el PDF, lo sube a GCS y actualiza el estado a `GENERATED`.
+- El scheduler publica el evento Kafka y actualiza el estado a `PUBLISHED`.
 - Los errores se reintentan hasta 3 veces y quedan como `FAILED` con mensaje descriptivo.
-- Los registros `PROCESSING` colgados son detectados y recuperados por el `RecoveryJobListener`.
-- `payment-loyalty` actualiza la mision con el `documentUrl` al recibir el evento completado.
+- Los registros `PROCESSING` colgados son detectados y recuperados por `recoverStuckProcessing()`.
+- El servicio productor actualiza su entidad con el `documentUrl` al recibir el evento completado.
 - El flujo soporta reprocesamiento sin duplicar documentos (idempotencia).
 
 ---
 
-## Equipo
+## Decision Final
 
-| Nombre | Version | Cambio |
-|--------|---------|--------|
-| M. Soria | 0.0.1 | Inicio |
-| M. Soria | 0.1.0 | Rediseno: 2 Steps, TemplateCache, RecoveryListener, retry_count |
-| M. Soria | 0.2.0 | Migracion S3 -> GCS (ver ADR-002) |
+Se adopta la arquitectura de scheduler basada en `@Scheduled(fixedDelay)` con `DocumentGenerationScheduler` como orquestador del ciclo completo. Esta decision reemplaza cualquier implementacion previa basada en Spring Batch (Steps, Readers, Processors, Writers). Ver historial de cambios en el repositorio Git.

@@ -4,14 +4,14 @@
 
 `document-generator-api` es un microservicio de generación asíncrona de documentos PDF. Recibe solicitudes via Kafka, las persiste en PostgreSQL con estado `PENDING`, las procesa con un scheduler (generación PDF + upload a GCS) y publica los resultados de vuelta a Kafka.
 
-**Stack:** Spring Boot 3.x · Java 17 · PostgreSQL 15.2 · Kafka (KRaft) · Google Cloud Storage · Mustache.java · Flying Saucer
+**Stack:** Spring Boot 3.3.3 · Java 21 · PostgreSQL 15.2 · Kafka (KRaft) · Google Cloud Storage · Mustache.java · Flying Saucer
 
 ---
 
 ## Flujo completo
 
 ```
-Productor externo (ej. payment-loyalty)
+Productor externo
     |
     v Kafka [document.generation.requested]
     |
@@ -51,7 +51,7 @@ Productor externo (ej. payment-loyalty)
     |
     v Kafka [document.generation.completed]
     |
-    v Productor externo
+    v Servicio productor externo
         - Recibe idempotency_id + document_url
         - Actualiza su dominio con el link del documento
 ```

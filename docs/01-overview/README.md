@@ -1,21 +1,21 @@
 # document-generator-api — Visión general
 
-Microservicio de generación asíncrona de documentos PDF para el ecosistema Tenpo.
+Microservicio de generación asíncrona de documentos PDF para una plataforma de servicios.
 
 ## Propósito
 
-Desacoplar la generación física de documentos del flujo transaccional de los servicios de negocio. Un servicio como `payment-loyalty` publica una solicitud en Kafka y `document-generator-api` se encarga de todo el pipeline posterior: persistencia, generación PDF (AcroForm + PDFBox), almacenamiento en GCS y notificación del resultado.
+Desacoplar la generación física de documentos del flujo transaccional de los servicios de negocio. Un servicio productor externo publica una solicitud en Kafka y `document-generator-api` se encarga de todo el pipeline posterior: persistencia, generación PDF (HTML Mustache + Flying Saucer), almacenamiento en GCS y notificación del resultado.
 
 ## Contexto de negocio
 
-El dominio inicial es **Misiones**: cuando se crea una misión en `payment-loyalty`, se genera un documento PDF asociado. El servicio está diseñado para escalar a otros dominios sin modificar el núcleo del pipeline — alcanza con registrar un nuevo template via `POST /v1/templates`.
+El dominio inicial es **Misiones**: cuando un servicio productor externo solicita la creación de un documento de misión, se genera un PDF asociado. El servicio está diseñado para escalar a otros dominios sin modificar el núcleo del pipeline — alcanza con registrar un nuevo template via `POST /v1/templates`.
 
 ## Stack tecnológico
 
 | Capa | Tecnología |
 |------|-----------|
-| Runtime | Java 17 · Spring Boot 3.x |
-| Generación PDF | Apache PDFBox (AcroForm fill + flatten) |
+| Runtime | Java 21 · Spring Boot 3.3.3 |
+| Generación PDF | Mustache.java · Flying Saucer (HTML → PDF) |
 | Persistencia | PostgreSQL 15.2 · Spring Data JPA · Flyway |
 | Mensajería | Apache Kafka (KRaft, sin Zookeeper) |
 | Almacenamiento | Google Cloud Storage · fake-gcs-server (local) |
@@ -24,14 +24,14 @@ El dominio inicial es **Misiones**: cuando se crea una misión en `payment-loyal
 ## Flujo resumido
 
 ```
-payment-loyalty
+Servicio productor externo
     └─► Kafka [document.generation.requested]
             └─► DocumentGenerationRequestedConsumer
                     └─► data.raw_data (status = PENDING)
-                            └─► @Scheduled cron → DocumentGenerationScheduler
-                                    ├─► TemplateCache → PDFBox → GCS
+                            └─► @Scheduled fixedDelay → DocumentGenerationScheduler
+                                    ├─► TemplateCache → Mustache + Flying Saucer → GCS
                                     └─► Kafka [document.generation.completed]
-                                                └─► payment-loyalty (document_url)
+                                                └─► Servicio productor externo (document_url)
 ```
 
 ## Documentación por sección

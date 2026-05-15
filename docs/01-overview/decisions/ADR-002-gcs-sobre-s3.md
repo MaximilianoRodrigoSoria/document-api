@@ -15,7 +15,7 @@
 
 ## Contexto
 
-El ADR-001 definio AWS S3 como almacenamiento de documentos PDF generados. Durante la implementacion se identifico que el ecosistema Tenpo ya opera principalmente sobre Google Cloud Platform (GKE, Workload Identity, IAM). Mantener una dependencia de AWS exclusivamente para este servicio agrega friction operativa innecesaria.
+El ADR-001 definio AWS S3 como almacenamiento de documentos PDF generados. Durante la implementacion se identifico que el entorno de infraestructura del proyecto ya opera sobre Google Cloud Platform (GKE, Workload Identity, IAM). Mantener una dependencia de AWS exclusivamente para este servicio agrega friction operativa innecesaria.
 
 ---
 
@@ -32,7 +32,7 @@ Se reemplaza AWS S3 / LocalStack por **Google Cloud Storage** y **fake-gcs-serve
 | SDK | `software.amazon.awssdk:s3` | `com.google.cloud:google-cloud-storage` |
 | Emulador local | LocalStack | fake-gcs-server |
 | Configuracion de cliente | `S3Client` + endpoint override | `Storage` + `StorageOptions` con emulador host |
-| Autenticacion en GKE | Rol IAM de AWS | Workload Identity de GCP |
+| Autenticacion en produccion | Rol IAM de AWS | Workload Identity de GCP |
 | Config bean | `S3Config.java` | `GcsConfig.java` |
 | Cliente de storage | `S3StorageClient.java` | `GcsStorageClient.java` |
 | URL de documento | `s3://bucket/...` | `gs://bucket/...` |
@@ -41,7 +41,7 @@ Se reemplaza AWS S3 / LocalStack por **Google Cloud Storage** y **fake-gcs-serve
 
 ## Motivacion
 
-- El cluster de produccion ya corre en GKE con Workload Identity; no se requieren credenciales adicionales para GCS.
+- El servidor de produccion corre en GKE con Workload Identity de GCP; no se requieren credenciales adicionales para GCS.
 - Se elimina LocalStack del `docker-compose.yml` y se reemplaza por `fake-gcs-server`, mas liviano y especifico para GCS.
 - La API de `google-cloud-storage` es mas idiomatica para el ecosistema GCP.
 - Se evita mantener dos clouds (AWS + GCP) para un mismo servicio.
@@ -51,9 +51,9 @@ Se reemplaza AWS S3 / LocalStack por **Google Cloud Storage** y **fake-gcs-serve
 ## Consecuencias
 
 ### Positivas
-- Menor configuracion de credenciales en produccion (Workload Identity nativo de GKE).
+- Menor configuracion de credenciales en produccion (Workload Identity nativo de GCP).
 - Emulador local mas ligero y preciso (fake-gcs-server vs LocalStack).
-- Alineacion con el stack de infraestructura existente en Tenpo.
+- Alineacion con el stack de infraestructura del proyecto.
 
 ### Negativas
 - El ADR-001 y documentacion inicial referencian S3; deben actualizarse.
@@ -65,7 +65,6 @@ Se reemplaza AWS S3 / LocalStack por **Google Cloud Storage** y **fake-gcs-serve
 
 ```
 gs://<bucket>/
-    templates/          <- Templates PDF editables (AcroForm / Jasper)
     misiones/           <- Documentos generados del dominio MISIONES
     loans/              <- (futuro) Documentos del dominio LOANS
     <domain>/           <- Patron: carpeta = domain del registro en minusculas
