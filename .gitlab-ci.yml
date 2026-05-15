@@ -1,4 +1,0 @@
-include:
-  - project: 'tenpo/development/cicd/templates'
-    file: 'kubernetes/java/21/gradle/.gitlab-ci-template.yml' # Change this line to the correct path or ask to devops if not exists
-    ref: main
