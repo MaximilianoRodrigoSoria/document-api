@@ -1,0 +1,110 @@
+services:
+
+  # ─── PostgreSQL 15.2 ─────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15.2
+    container_name: document-generator-api-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: files
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - document-generator-api-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d files"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Kafka 7.6.0 (KRaft — sin Zookeeper) ─────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: document-generator-api-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      KAFKA_MESSAGE_MAX_BYTES: 2097152          # 2 MB — soporta payloads de 10k referidos (~1,1 MB)
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 2097152    # debe coincidir con message.max.bytes
+    networks:
+      - document-generator-api-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ─── fake-gcs-server (emulador de Google Cloud Storage) ──────────────────────
+  gcs:
+    image: fsouza/fake-gcs-server:latest
+    container_name: document-generator-api-gcs
+    ports:
+      - "4443:4443"
+    command:
+      - "-scheme"
+      - "http"
+      - "-port"
+      - "4443"
+      - "-backend"
+      - "filesystem"
+      - "-data"
+      - "/data"
+      - "-public-host"
+      - "localhost:4443"
+    volumes:
+      - "./gcs/data:/data"
+    networks:
+      - document-generator-api-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4443/storage/v1/b"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ─── Redis 7-alpine ───────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: document-generator-api-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - document-generator-api-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ─── WireMock (mocks de servicios externos para tests) ───────────────────────
+  wiremock:
+    image: wiremock/wiremock:latest
+    container_name: document-generator-api-wiremock
+    volumes:
+      - ./wiremock:/home/wiremock
+    ports:
+      - "8383:8080"
+    networks:
+      - document-generator-api-network
+
+networks:
+  document-generator-api-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

@@ -1,0 +1,57 @@
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Environment files — nunca commitear credenciales ###
+.env
+.env.local
+.env.dev
+.env.uat
+.env.prod
+
+### GCS emulator data — keep bucket structure, ignore actual data files ###
+gcs/data/*
+!gcs/data/.gitkeep
+!gcs/data/document-generator-bucket/
+gcs/data/document-generator-bucket/*
+!gcs/data/document-generator-bucket/.gitkeep
+
+### MkDocs build output ###
+site/
+
+### OS generated files ###
+.DS_Store
+.DS_Store?

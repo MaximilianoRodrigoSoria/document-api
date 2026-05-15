@@ -1,0 +1,116 @@
+spring:
+  profiles:
+    active: local
+  main:
+    allow-bean-definition-overriding: true
+  application:
+    name: document-generator-api
+  jackson:
+    default-property-inclusion: non_null
+    property-naming-strategy: SNAKE_CASE
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+  threads:
+    virtual:
+      enabled: true
+
+  # ─── JPA ──────────────────────────────────────────────────────────────────────
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: data
+        jdbc:
+          batch_size: 5000
+          batch_versioned_data: true
+          time_zone: UTC
+          lob:
+            non_contextual_creation: true
+        order_inserts: true
+        order_updates: true
+        generate_statistics: true
+        types:
+          print:
+            banner: false
+
+  # ─── Datasource ───────────────────────────────────────────────────────────────
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 80
+      minimum-idle: 25
+      idle-timeout: 30000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+      auto-commit: false
+
+  # ─── Flyway ───────────────────────────────────────────────────────────────────
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    schemas: data
+    default-schema: data
+    baseline-on-migrate: false
+
+  # ─── Kafka ────────────────────────────────────────────────────────────────────
+  kafka:
+    consumer:
+      group-id: document-generator-api
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    producer:
+      acks: all
+      retries: 3
+
+  # ─── Multipart ────────────────────────────────────────────────────────────────
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+server:
+  port: 80
+  servlet:
+    context-path: /document-generator-api
+
+management:
+  tracing:
+    propagation:
+      type: w3c,b3
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: document-generator-api
+
+logging:
+  level:
+    root: WARN
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+# ─── Document Generation ──────────────────────────────────────────────────────
+document-generation:
+  schedule:
+    fixed-delay: 5000
+    batch-size: 500
+    recovery-timeout-minutes: 30
+  kafka:
+    consumer-group-id: document-generator-api
+    topics:
+      requested: document.generation.requested
+      completed: document.generation.completed

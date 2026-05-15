@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: template
+  main:
+    banner-mode: 'off'
+  profiles:
+    active: test
+  jackson:
+    property-naming-strategy: SNAKE_CASE

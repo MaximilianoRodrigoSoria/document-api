@@ -1,0 +1,15 @@
+kong: private
+selector:
+  app: document-generator-api
+networking:
+  host: '${TENPO_SERVICE_PRIVATE_HOST}'
+  port: 80
+  protocol: TCP
+  endpoints:
+    - name: document-generator-api-private-endpoint
+      path: /v1/document-generator-api
+      profile: private
+      methods:
+        - GET
+teamInfo:
+  name: "group:default/channel-loyalty-team"

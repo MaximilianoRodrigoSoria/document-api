@@ -1,0 +1,45 @@
+server:
+  port: 8080
+
+spring:
+  # ─── PostgreSQL (local via docker-compose) ────────────────────────────────────
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:files}?TimeZone=UTC
+    username: ${DB_USER:user}
+    password: ${DB_PASS:password}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 3
+      connection-timeout: 3000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      keepalive-time: 60000
+
+  # ─── Flyway ──────────────────────────────────────────────────────────────────
+  flyway:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:files}?TimeZone=UTC
+    user: ${DB_USER:user}
+    password: ${DB_PASS:password}
+
+  # ─── Kafka (local via docker-compose) ─────────────────────────────────────────
+  kafka:
+    bootstrap-servers: ${KAFKA_HOST:localhost}:9092
+    replicas: 1
+
+# ─── GCS (local via fake-gcs-server) ─────────────────────────────────────────
+gcs:
+  emulator-host: http://localhost:4443
+  public-url-base: http://localhost:4443
+  project-id: local-project
+  bucket-name: document-generator-bucket
+
+# ─── Scheduler — config rápida para desarrollo local ─────────────────────────
+document-generation:
+  schedule:
+    fixed-delay: 30000
+    batch-size: 20
+    recovery-timeout-minutes: 5
+
+logging:
+  level:
+    ar.com.laboratory: DEBUG

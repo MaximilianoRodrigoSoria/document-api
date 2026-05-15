@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ── Ambientes con New Relic (prod, uat, dev/stage) ────────────────────── -->
+    <springProfile name="prod,uat,dev,stage">
+        <appender name="NewRelic" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="com.newrelic.logging.logback.NewRelicEncoder"/>
+        </appender>
+
+        <appender name="ASYNC" class="com.newrelic.logging.logback.NewRelicAsyncAppender">
+            <appender-ref ref="NewRelic"/>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="NewRelic"/>
+        </root>
+    </springProfile>
+
+    <!-- ── Local / Test: consola con color y contexto de tracing ─────────────── -->
+    <springProfile name="local,test,integration-test">
+        <appender name="Console" class="ch.qos.logback.core.ConsoleAppender">
+            <layout class="ch.qos.logback.classic.PatternLayout">
+                <Pattern>%black(%d{ISO8601}) %highlight(%-5level) [document-generator-api,%X{spanId:-},%X{traceId:-}] [%X{transaction_name}] [%blue(%t)] %yellow(%logger{36}:%line): %msg%n</Pattern>
+            </layout>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="Console"/>
+        </root>
+    </springProfile>
+
+</configuration>

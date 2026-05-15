@@ -1,0 +1,228 @@
+/* ============================================================
+   Playbook IA — Estilos personalizados
+   ============================================================ */
+
+/* --- Branding: logo en sidebar --- */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.6rem;
+}
+
+/* --- Hero banner (index) --- */
+.hero-banner {
+  background: linear-gradient(135deg, #311b92 0%, #7c4dff 50%, #ffc107 100%);
+  border-radius: 12px;
+  padding: 2.5rem 2rem;
+  margin-bottom: 2rem;
+  color: white;
+  text-align: center;
+}
+.hero-banner h1 {
+  color: white !important;
+  margin-bottom: 0.5rem;
+  font-size: 2rem;
+}
+.hero-banner p {
+  color: rgba(255,255,255,0.9);
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+/* --- Cards grid (home) --- */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.card {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 1.25rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+  background: var(--md-default-bg-color);
+}
+.card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+.card h3 {
+  margin-top: 0 !important;
+  font-size: 1.05rem;
+}
+.card p {
+  font-size: 0.9rem;
+  color: var(--md-default-fg-color--light);
+}
+
+/* --- Código --- */
+.md-typeset pre > code {
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+/* --- Checkboxes --- */
+.md-typeset .task-list-item input[type="checkbox"] {
+  accent-color: #7c4dff;
+}
+
+/* --- Admonitions tuning --- */
+.md-typeset .admonition {
+  font-size: 0.88rem;
+}
+
+/* --- Callouts visuales (clases custom para bloques destacados) --- */
+.callout-highlight {
+  border-left: 4px solid var(--md-accent-fg-color);
+  background: rgba(255, 193, 7, 0.08);
+  padding: 1rem 1.25rem;
+  border-radius: 0 8px 8px 0;
+  margin: 1.5rem 0;
+}
+.callout-highlight p:last-child {
+  margin-bottom: 0;
+}
+
+.callout-critical {
+  border-left: 4px solid #e53935;
+  background: rgba(229, 57, 53, 0.06);
+  padding: 1rem 1.25rem;
+  border-radius: 0 8px 8px 0;
+  margin: 1.5rem 0;
+}
+
+.callout-success {
+  border-left: 4px solid #4caf50;
+  background: rgba(76, 175, 80, 0.06);
+  padding: 1rem 1.25rem;
+  border-radius: 0 8px 8px 0;
+  margin: 1.5rem 0;
+}
+
+/* --- Tooltips (abbr + Material content.tooltips) --- */
+.md-typeset abbr {
+  text-decoration: underline dotted var(--md-accent-fg-color);
+  cursor: help;
+}
+
+/* --- Tablas avanzadas --- */
+.md-typeset table:not([class]) {
+  border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  display: table;
+  width: 100%;
+}
+.md-typeset table:not([class]) thead {
+  background: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+}
+.md-typeset table:not([class]) thead th {
+  font-weight: 600;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.75rem 1rem;
+  color: white;
+}
+.md-typeset table:not([class]) tbody tr {
+  transition: background 0.15s;
+}
+.md-typeset table:not([class]) tbody tr:hover {
+  background: rgba(124, 77, 255, 0.04);
+}
+.md-typeset table:not([class]) td {
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+/* --- Video embed responsive --- */
+.video-container {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 */
+  height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  margin: 1.5rem 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+}
+.video-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* --- Imagen con caption --- */
+figure {
+  margin: 1.5rem 0;
+  text-align: center;
+}
+figure img {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  max-width: 100%;
+}
+figcaption {
+  font-size: 0.82rem;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+/* --- Breadcrumbs (navigation.path) --- */
+.md-path {
+  font-size: 0.78rem;
+}
+
+/* --- Footer limpio --- */
+.md-footer-meta {
+  background-color: var(--md-primary-fg-color);
+}
+
+/* --- Tabs de código: separador más visible --- */
+.md-typeset .tabbed-set {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+
+/* --- Keyboard keys (++ctrl+c++) --- */
+.md-typeset .keys kbd {
+  font-size: 0.78rem;
+}
+
+/* --- Marca de resaltado ==texto== --- */
+.md-typeset mark {
+  background: rgba(255, 193, 7, 0.35);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+
+/* --- PlantUML diagrams --- */
+.plantuml {
+  text-align: center;
+  margin: 1.5rem 0;
+}
+.plantuml img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+/* --- Print / PDF adjustments --- */
+@media print {
+  .tts-player,
+  .md-header,
+  .md-sidebar,
+  .md-footer {
+    display: none !important;
+  }
+  .md-content {
+    max-width: 100% !important;
+  }
+}

@@ -1,0 +1,186 @@
+# ============================================================
+# document-generator-api — MkDocs Material
+# ============================================================
+
+site_name: document-generator-api
+site_description: Microservicio de generación asíncrona de documentos PDF — Spring Boot 3.3 · Java 21 · Kafka · GCS · PostgreSQL
+site_author: Tenpo Engineering
+site_url: https://tu-dominio.com/document-generator-api/
+
+# ============================================================
+# Navegación
+# ============================================================
+nav:
+  - Inicio: index.md
+  - Visión general:
+      - Overview: 01-overview/README.md
+      - Arquitectura: 01-overview/architecture.md
+      - Decisiones:
+          - ADR-001 Generación asíncrona: 01-overview/decisions/ADR-001-generacion-asincrona-documentos.md
+          - ADR-002 GCS sobre S3: 01-overview/decisions/ADR-002-gcs-sobre-s3.md
+  - Dominio:
+      - Templates PDF: 02-domain/templates.md
+      - Estados raw_data: 02-domain/estados-raw-data.md
+      - Eventos Kafka: 02-domain/events.md
+  - Scheduler:
+      - Ciclo de procesamiento: 03-batch/batch-job.md
+      - Recovery de colgados: 03-batch/recovery.md
+      - Tuning de rendimiento: 03-batch/tuning.md
+  - API REST:
+      - Templates API: 04-api/templates-api.md
+      - Storage API: 04-api/storage-api.md
+      - Jobs API: 04-api/jobs-api.md
+      - Códigos de error: 04-api/error-codes.md
+  - Infraestructura:
+      - Base de datos: 05-infrastructure/database.md
+      - Kafka: 05-infrastructure/kafka.md
+      - Google Cloud Storage: 05-infrastructure/gcs.md
+      - Observabilidad: 05-infrastructure/observability.md
+  - Desarrollo:
+      - Setup local: 06-development/local-setup.md
+      - Estructura de paquetes: 06-development/package-structure.md
+      - Estrategia de testing: 06-development/testing-strategy.md
+      - Agregar un dominio: 06-development/adding-a-domain.md
+  - Operaciones:
+      - Runbook: 07-operations/runbook.md
+      - Templates en GCS: 07-operations/gcs-templates.md
+      - Trigger manual: 07-operations/trigger-manual.md
+  - Spikes:
+      - SPIKE-001 Generación asíncrona: spikes/SPIKE-001-generacion-asincrona-documentos-pdf.md
+      - SPIKE template: spikes/SPIKE-ABC-123-nombre-del-spike.md
+  - Contexto:
+      - Onboarding: context/onboarding.md
+
+# ============================================================
+# Theme — MkDocs Material
+# ============================================================
+theme:
+  name: material
+  language: es
+  custom_dir: docs/overrides
+  logo: imgs/logo.svg
+  favicon: imgs/favicon.svg
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Cambiar a modo oscuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Cambiar a modo claro
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - navigation.path
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - toc.follow
+    - content.tooltips
+  icon:
+    repo: fontawesome/brands/github
+    admonition:
+      note: fontawesome/solid/note-sticky
+      abstract: fontawesome/solid/book
+      info: fontawesome/solid/circle-info
+      tip: fontawesome/solid/bullhorn
+      success: fontawesome/solid/check
+      question: fontawesome/solid/circle-question
+      warning: fontawesome/solid/triangle-exclamation
+      failure: fontawesome/solid/bomb
+      danger: fontawesome/solid/skull
+      bug: fontawesome/solid/robot
+      example: fontawesome/solid/flask
+      quote: fontawesome/solid/quote-left
+
+# ============================================================
+# Markdown Extensions
+# ============================================================
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+      auto_title: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      auto_append:
+        - docs/includes/abbreviations.md
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.smartsymbols
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - def_list
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - sane_lists
+  - abbr
+  - footnotes
+
+# ============================================================
+# Plugins
+# ============================================================
+plugins:
+  - search:
+      lang: es
+
+# ============================================================
+# Extra
+# ============================================================
+extra:
+  version:
+    provider: mike
+    default: latest
+  generator: false
+
+extra_css:
+  - stylesheets/extra.css
+  - stylesheets/components.css
+
+extra_javascript:
+  - javascripts/tts-player.js
+
+docs_dir: docs
+use_directory_urls: true

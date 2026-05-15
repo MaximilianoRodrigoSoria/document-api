@@ -1,0 +1,210 @@
+plugins {
+    id 'java'
+    id 'jacoco'
+    id 'org.springframework.boot' version '3.3.3'
+    id 'io.spring.dependency-management' version '1.1.6'
+}
+
+group = 'ar.com.laboratory'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    sourceCompatibility = '21'
+    targetCompatibility = '21'
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+bootJar {
+    archiveFileName = "app.jar"
+}
+
+jacoco {
+    toolVersion = "0.8.11"
+    reportsDirectory.set(layout.buildDirectory.dir("$buildDir/reports/jacoco"))
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        credentials {
+            username System.getenv("NEXUS_USER")
+            password System.getenv("NEXUS_PASS")
+        }
+        url 'https://nexus-tools.tenpodigital.cloud/repository/maven-releases/'
+    }
+    maven {
+        credentials {
+            username System.getenv("NEXUS_USER")
+            password System.getenv("NEXUS_PASS")
+        }
+        url 'https://nexus-tools.tenpodigital.cloud/repository/maven-snapshots/'
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java']
+        }
+    }
+    test {
+        java {
+            srcDirs = ['src/test/java']
+        }
+    }
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springcloud}"
+        mavenBom "com.google.cloud:libraries-bom:26.34.0"
+        mavenBom "org.testcontainers:testcontainers-bom:1.19.3"
+    }
+}
+
+dependencies {
+    // ── Lombok ────────────────────────────────────────────────────────────────
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+
+    // ── MapStruct ─────────────────────────────────────────────────────────────
+    implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+    testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+
+    // ── Spring Boot Core ──────────────────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // ── Spring Data JPA + PostgreSQL ──────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // ── Flyway ────────────────────────────────────────────────────────────────
+    // flyway-core solo no reconoce PostgreSQL 15+ en Flyway 10 (Spring Boot 3.2+).
+    // flyway-database-postgresql es el módulo que habilita el soporte explícito.
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    // ── Spring Kafka ──────────────────────────────────────────────────────────
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    // ── Swagger / OpenAPI 3 ───────────────────────────────────────────────────
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${openapi}"
+
+    // ── Jackson ───────────────────────────────────────────────────────────────
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // ── Observabilidad y trazas ───────────────────────────────────────────────
+    //implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+    //implementation "cl.tenpo:lib-utils-core:$utilscore"
+    //implementation "cl.tenpo:observability-lib:$observabilitylib"
+    //implementation "com.newrelic.logging:logback:$newreliclogback"
+    // reactive-core-lib: solo era usado por los placeholders del base (TestHandler).
+    // Nuestro código no lo requiere — se excluye para no forzar una versión inventada.
+    // implementation "cl.tenpo:reactive-core-lib:$reactiveCorelib"
+
+    // ── Google Cloud Storage ──────────────────────────────────────────────────
+    implementation 'com.google.cloud:google-cloud-storage'
+
+    // ── Mustache — renderizado de templates HTML ───────────────────────────────
+    implementation 'com.github.spullara.mustache.java:compiler:0.9.10'
+
+    // ── Flying Saucer — conversión HTML → PDF ─────────────────────────────────
+    implementation 'org.xhtmlrenderer:flying-saucer-pdf-openpdf:9.1.22'
+
+    // ── Test — unitarios ──────────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'io.projectreactor:reactor-test'
+
+    // ── Test — Kafka ──────────────────────────────────────────────────────────
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+
+    // ── Test — H2 en modo PostgreSQL ──────────────────────────────────────────
+    testRuntimeOnly 'com.h2database:h2'
+
+    // ── Test — Testcontainers ─────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:kafka'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation "org.wiremock.integrations.testcontainers:$wiremocklib"
+}
+
+task checkstyle(type: Checkstyle) {
+    source 'src/main/java'
+    include '**/*.java'
+    exclude '**/build/', '**/generated/', '**/target/'
+    classpath = files()
+    configFile = file("${rootProject.projectDir}/config/checkstyle/checkstyle.xml")
+    ignoreFailures = true
+}
+
+def exclusions = [
+        '**/config/**',
+        '**/Application*',
+]
+
+test {
+    useJUnitPlatform {
+        if (!System.getProperty("groups", "").contains("integration")) {
+            excludeTags "integration"
+        }
+    }
+    maxHeapSize '512m'
+    jacoco {
+        enabled = true
+        excludes += exclusions
+    }
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        csv.required = true
+        html.required = true
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: exclusions)
+        }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0
+                counter = 'LINE'
+                excludes = exclusions
+            }
+            afterEvaluate {
+                getClassDirectories().setFrom(classDirectories.files.collect {
+                    fileTree(dir: it, exclude: exclusions)
+                })
+            }
+        }
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification

@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DATABASE_HOST}:5432/${DB_NAME}?connectTimeout=30&socketTimeout=30
+    username: ${DB_USER}
+    password: ${DB_PASS}
+    hikari:
+      minimum-idle: 2
+      maximum-pool-size: 20
+  kafka:
+    bootstrap-servers: ${KAFKA_HOST}
+    consumer:
+      properties:
+        sasl:
+          jaas:
+            config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_API_CLIENT}" password="${KAFKA_API_SECRET}";
+          mechanism: PLAIN
+        security:
+          protocol: ${KAFKA_SECURITY_PROTOCOL:SASL_SSL}
+
+gcs:
+  project-id: ${GCS_PROJECT_ID}
+  bucket-name: ${GCS_BUCKET_NAME}
+  credentials-json: ${GCS_CREDENTIALS_JSON:}

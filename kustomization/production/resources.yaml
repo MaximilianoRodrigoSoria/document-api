@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${CI_PROJECT_NAME}
+spec:
+  template:
+    spec:
+      containers:
+      - name: ${CI_PROJECT_NAME}
+        resources:
+          limits:
+            memory: 1.5G
+          requests:
+            cpu: 50m
+            memory: 800Mi
