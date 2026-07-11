@@ -109,7 +109,7 @@ dependencies {
     implementation 'com.google.cloud:google-cloud-storage'
 
     // ── Mustache — renderizado de templates HTML ───────────────────────────────
-    implementation 'com.github.spullara.mustache.java:compiler:0.9.10'
+    implementation 'com.github.spullara.mustache.java:compiler:0.9.14'
 
     // ── Flying Saucer — conversión HTML → PDF ─────────────────────────────────
     implementation 'org.xhtmlrenderer:flying-saucer-pdf-openpdf:9.1.22'
