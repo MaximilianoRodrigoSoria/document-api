@@ -65,10 +65,10 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok'
 
     // ── MapStruct ─────────────────────────────────────────────────────────────
-    implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+    implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
-    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
-    testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+    testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
 
     // ── Spring Boot Core ──────────────────────────────────────────────────────
     implementation 'org.springframework.boot:spring-boot-starter-web'
